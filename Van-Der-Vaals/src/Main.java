@@ -24,7 +24,7 @@ public class Main {
 		double tbegin = 0.2;
 		double tend = gas.getTcr();
 		int N = 5000;
-		int tN = 7;
+		int tN = 1;
 		double vbegin = 0.1;
 		double vend = 100;
 
@@ -33,8 +33,9 @@ public class Main {
 		for (int q = 0; q < N; q++) {
 			vaxis[q] = vbegin + (vend - vbegin) / N * q;
 			// fcrGraph[q] = f(vaxis[q], Tcr, d, l, a, b);
-			for (int w = 0; w < tN; w++) {
-				double t = tbegin + (tend - tbegin) / (tN - 1) * w;
+			funcGraph[0][q] = gas.getP(vaxis[q], tend);
+			for (int w = 1; w < tN; w++) {
+				double t = tend - (tend - tbegin) / (tN - 1) * w;
 				funcGraph[w][q] = gas.getP(vaxis[q], t);
 			}
 		}
@@ -100,39 +101,68 @@ public class Main {
 		double[][] arrVbVc = new double[2][2 * N];
 		for (int i = 0; i < N; i++) {
 
+			if(i > 4900)// && i < 1000)
+			{
+				double[][] qqq = new double[2][N];
+				for(int q=0;q<N;q++)
+				{
+					qqq[0][q] = t - bineps + 2*q*bineps/N;
+					qqq[1][q] = gas.Q(qqq[0][q]);
+				}
+				data.addSeries("Q, t = "+t+"; bineps = "+bineps, qqq);
+				renderer.setSeriesPaint(data.getSeriesCount() - 1, Color.green);
+			}
+			
 			lambda -= h;
 			double preveps = gas.getEps();
 			gas.changeLambda(lambda);
 
-			double newt;
+			double newt = 0;
 			if (gas.getEps() < 0) {
-				// break;
-
-				bineps = 2;
+				
+				if(preveps > 0){
+					t = 0.055;
+					bineps = 0.033;			
+				}
 				try{
-					newt = binhQSearch(t - bineps, t + bineps, gas);					
+					int NN = 300;
+					double prevQ = gas.Q(t-bineps);
+					boolean success = false;
+					
+					for(int q=0;q<NN;q++)
+					{
+						double nearlyt = t - bineps + 2*q*bineps/NN;
+						double nearlyQ = gas.Q(nearlyt);
+						if(nearlyQ*prevQ < 0)
+						{
+							newt = binQSearch(t - bineps + 2*(q-1)*bineps/NN, t - bineps + 2*q*bineps/NN, gas);
+							success = true;
+							break;
+						}
+						prevQ = nearlyQ;
+					}
+					if(!success)
+					{
+						throw new Exception();
+					}
+//					bineps /= 2.;					
+//					newt = binQSearch(t - bineps, t + bineps, gas);
 				}
 				catch(Exception ex)
 				{
-					//TODO 
 					double[][] qqq = new double[2][N];
 					for(int q=0;q<N;q++)
 					{
 						qqq[0][q] = t - bineps + 2*q*bineps/N;
-						qqq[1][q] = gas.Q(Math.tanh(qqq[0][q]/2.));
+						qqq[1][q] = gas.Q(qqq[0][q]);
 					}
-
 					data.addSeries("Q", qqq);
-					renderer.setSeriesPaint(data.getSeriesCount() - 1, Color.red);
+					renderer.setSeriesPaint(data.getSeriesCount() - 1, Color.red);	
 					break;
 				}
-				
-//				newt = binQSearch(Math.tanh((t - bineps) / 2.), Math.tanh((t + bineps) / 2.), gas);
-				System.out.println("" + newt);
-				y = gas.y(Math.tanh(newt));
-				x = gas.x(Math.tanh(newt));
-
-//				newt = Math.log((1 + newt) / (1 - newt)); // 2 * atanh
+//				System.out.println("" + newt);
+				y = gas.y(newt);
+				x = gas.x(newt);
 			} else {
 				newt = binQSearch(t - bineps, t + bineps, gas);
 				y = gas.y(newt);

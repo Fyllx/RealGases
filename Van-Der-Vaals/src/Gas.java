@@ -87,42 +87,56 @@ public class Gas {
 		}
 	}
 
+	/**
+	 * 
+	 * @param t
+	 *            - in case eps>0 means "t", in case eps<0 means "z"
+	 * @return
+	 * @throws Exception
+	 */
 	public double x(double t) throws Exception {
 		double xsh;
 		if (eps > 0) {
 			xsh = Math.sqrt(Math.abs(delta) / eps) * (1. / Math.sqrt(1 + g * g))
 					* ((1. - t * t) / Math.sqrt(akrsh) + 2. * t * g / Math.sqrt(ckrsh)) / (1. + t * t);
 		} else {
-			if (Math.abs(t) > 1.)
-				throw new Exception("|t| > 1 in case \'eps < 0\'. Error!");
-
+			double fi = Math.atan(2 * bkr / (ckr - akr)) / 2.;
+			double xshsh, yshsh;
 			if (akr - ckr > 0) {
-				xsh = Math.sqrt(delta / eps) * (1. / Math.sqrt(1 + g * g))
-						* (2. * t / Math.sqrt(akrsh) + g * (1. + t * t) / Math.sqrt(Math.abs(ckrsh))) / (1. - t * t);
+				xshsh = Math.sqrt(delta / (eps * akrsh)) * Math.sinh(t);
+				yshsh = Math.sqrt(delta / (eps * Math.abs(ckrsh))) * Math.cosh(t);
 			} else {
-				xsh = Math.sqrt(delta / eps) * (1. / Math.sqrt(1 + g * g))
-						* ((1. + t * t) / Math.sqrt(Math.abs(akrsh)) + 2. * t * g / Math.sqrt(ckrsh)) / (1. - t * t);
+				xshsh = Math.sqrt(delta / (eps * Math.abs(akrsh))) * Math.cosh(t);
+				yshsh = Math.sqrt(delta / (eps * ckrsh)) * Math.sinh(t);
 			}
+			xsh = xshsh * Math.cos(fi) + yshsh * Math.sin(fi);
 		}
 		return x0 + xsh;
 	}
 
+	/**
+	 * 
+	 * @param t
+	 *            - in case eps>0 means "t", in case eps<0 means "z"
+	 * @return
+	 * @throws Exception
+	 */
 	public double y(double t) throws Exception {
 		double ysh;
 		if (eps > 0) {
 			ysh = Math.sqrt(Math.abs(delta) / eps) * (1. / Math.sqrt(1 + g * g))
 					* (-g * (1. - t * t) / Math.sqrt(akrsh) + 2. * t / Math.sqrt(ckrsh)) / (1. + t * t);
 		} else {
-			if (Math.abs(t) > 1.)
-				throw new Exception("|t| > 1 in case \'eps < 0\'. Error!");
-
+			double fi = Math.atan(2 * bkr / (ckr - akr)) / 2.;
+			double xshsh, yshsh;
 			if (akr - ckr > 0) {
-				ysh = Math.sqrt(delta / eps) * (1. / Math.sqrt(1 + g * g))
-						* (-2. * g * t / Math.sqrt(akrsh) + (1. + t * t) / Math.sqrt(Math.abs(ckrsh))) / (1. - t * t);
+				xshsh = Math.sqrt(delta / (eps * akrsh)) * Math.sinh(t);
+				yshsh = Math.sqrt(delta / (eps * Math.abs(ckrsh))) * Math.cosh(t);
 			} else {
-				ysh = Math.sqrt(delta / eps) * (1. / Math.sqrt(1 + g * g))
-						* (-g * (1. + t * t) / Math.sqrt(Math.abs(akrsh)) + 2. * t / Math.sqrt(ckrsh)) / (1. - t * t);
+				xshsh = Math.sqrt(delta / (eps * Math.abs(akrsh))) * Math.cosh(t);
+				yshsh = Math.sqrt(delta / (eps * ckrsh)) * Math.sinh(t);
 			}
+			ysh = -xshsh * Math.sin(fi) + yshsh * Math.cos(fi);
 		}
 		return ysh + y0 - delvol;
 	}
@@ -142,16 +156,25 @@ public class Gas {
 		return T / (V - beta) - alpha / (Math.pow(T, m) * (V + delvol) * (V + delvol));
 	}
 
+	/**
+	 * 
+	 * @param t
+	 *            - in case eps>0 means "t", in case eps<0 means "z"
+	 * @return
+	 * @throws Exception
+	 */
 	public double Q(double t) throws Exception {
 		double x = x(t);
 		double y = y(t);
 
-		double a = 1. / (y - Math.sqrt(y * y - 4 * x) - 2 * beta);
-		double b = 1. / (2 * Math.sqrt(y * y - 4 * x));
-		double c = (y - Math.sqrt(y * y - 4 * x) - 2 * beta);
-		double d = (y + Math.sqrt(y * y - 4 * x) - 2 * beta);
-		double e = alpha * Math.sqrt(y * y - 4 * x)
-				/ ((y - Math.sqrt(y * y - 4 * x) + 2 * delvol) * (x + delvol * (y - delvol)));
+		double q = 4 * x / y / y;
+
+		double a = 1. / (y * (1 - Math.sqrt(1 - q)) - 2 * beta);
+		double b = 1. / (2 * y * Math.sqrt(1 - q));
+		double c = (y * (1 - Math.sqrt(1 - q)) - 2 * beta);
+		double d = (y * (1 + Math.sqrt(1 - q)) - 2 * beta);
+		double e = alpha * y * Math.sqrt(1 - q)
+				/ ((y * (1 - Math.sqrt(1 - q)) + 2 * delvol) * (x + delvol * (y - delvol)));
 
 		return Math.pow(lambda, m + 1.) * (a + b * Math.log(c / d)) - e;
 	}
